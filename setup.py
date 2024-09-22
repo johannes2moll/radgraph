@@ -13,7 +13,6 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3 :: Only',
     ],
-    python_requires='==3.8',
     install_requires=['torch',
                       'transformers',
                       'appdirs',
