@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name='radgraph',
@@ -14,9 +14,9 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
     ],
     python_requires='==3.8',
-    install_requires=['torch==2.2.1',
-                      'transformers==4.39.0',
-                      "appdirs",
+    install_requires=['torch',
+                      'transformers',
+                      'appdirs',
                       'jsonpickle',
                       'filelock',
                       'h5py',
