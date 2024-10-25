@@ -1,33 +1,29 @@
-import logging
-import torch.nn as nn
-import numpy as np
-
+import importlib.metadata
 import json
+import logging
 import os
 import sys
 import tarfile
-import torch
-import importlib.metadata
-from dotmap import DotMap
 
-from radgraph.allennlp.data import Vocabulary
-from radgraph.allennlp.data.dataset_readers import AllennlpDataset
-from radgraph.allennlp.data.dataloader import PyTorchDataLoader
-from radgraph.allennlp.data import token_indexers
-from radgraph.allennlp.modules import token_embedders, text_field_embedders
+import numpy as np
+import torch
+import torch.nn as nn
+from appdirs import user_cache_dir
+from dotmap import DotMap
 from radgraph.allennlp.common.params import Params
+from radgraph.allennlp.data import Vocabulary, token_indexers
+from radgraph.allennlp.data.dataloader import PyTorchDataLoader
+from radgraph.allennlp.data.dataset_readers import AllennlpDataset
+from radgraph.allennlp.modules import text_field_embedders, token_embedders
 from radgraph.dygie.data.dataset_readers.dygie import DyGIEReader
 from radgraph.dygie.models import dygie
-
-from radgraph.utils import download_model
-from radgraph.utils import (
-    preprocess_reports,
-    postprocess_reports,
-    batch_to_device,
-)
-
 from radgraph.rewards import compute_reward
-from appdirs import user_cache_dir
+from radgraph.utils import (
+    batch_to_device,
+    download_model,
+    postprocess_reports,
+    preprocess_reports,
+)
 
 logging.getLogger("radgraph").setLevel(logging.CRITICAL)
 logging.getLogger("allennlp").setLevel(logging.CRITICAL)
@@ -44,20 +40,15 @@ CACHE_DIR = os.path.join(CACHE_DIR, version)
 
 class RadGraph(nn.Module):
     def __init__(
-            self,
-            batch_size=1,
-            cuda=None,
-            model_type=None,
-            **kwargs
+        self,
+        device,
+        batch_size=1,
+        model_type=None,
+        **kwargs
     ):
-
         super().__init__()
-        # Device handling. For now we stick to cpu.
-        if cuda is None:
-            cuda = 0 if torch.cuda.is_available() else -1
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        device = "cpu"
+        self.device = device
 
         if model_type is None:
             print("model_type not provided, defaulting to radgraph-xl")
@@ -65,7 +56,6 @@ class RadGraph(nn.Module):
 
         assert model_type in ["radgraph", "radgraph-xl", "echograph"]
 
-        self.cuda = cuda
         self.batch_size = batch_size
         self.model_type = model_type.lower()
         if model_type == "echograph":
@@ -122,22 +112,18 @@ class RadGraph(nn.Module):
         for name in ["type", "embedder", "initializer", "module_initializer"]:
             del model_dict[name]
 
-        model = dygie.DyGIE(vocab=vocab,
+        self.model = dygie.DyGIE(vocab=vocab,
                             embedder=embedder,
                             **model_dict
-                            )
+                            ).to(device=self.device)
 
         model_state_path = os.path.join(temp_dir, "weights.th")
-        if device == "cpu":
-            model_state = torch.load(model_state_path, map_location=torch.device('cpu'))
-        else:
-            model_state = torch.load(model_state_path)
+        
+        model_state = torch.load(model_state_path, map_location=self.device)
 
-        model.load_state_dict(model_state, strict=True)
-        model.eval()
 
-        self.device = device
-        self.model = model.to(device)
+        self.model.load_state_dict(model_state, strict=True)
+        self.model.eval()
 
     def forward(self, hyps):
 
@@ -258,45 +244,45 @@ class F1RadGraph(nn.Module):
         )
 
 
-if __name__ == "__main__":
-    model_type = "echograph"
-    radgraph = RadGraph(model_type=model_type)
-    annotations = radgraph(["no evidence of acute cardiopulmonary process moderate hiatal hernia"])
-    print(json.dumps(annotations, indent=4))
-    sys.exit()
+# if __name__ == "__main__":
+#     model_type = "echograph"
+#     radgraph = RadGraph(model_type=model_type)
+#     annotations = radgraph(["no evidence of acute cardiopulmonary process moderate hiatal hernia"])
+#     print(json.dumps(annotations, indent=4))
+#     sys.exit()
 
-    model_type = "radgraph-xl"
-    radgraph = RadGraph(model_type=model_type)
-    refs = ["no acute cardiopulmonary abnormality",
-            "et tube terminates 2 cm above the carina retraction by several centimeters is recommended for more optimal placement bibasilar consolidations better assessed on concurrent chest ct",
-            "there is no significant change since the previous exam the feeding tube and nasogastric tube have been removed",
-            "unchanged mild pulmonary edema no radiographic evidence pneumonia",
-            "no evidence of acute pulmonary process moderately large size hiatal hernia",
-            "no acute intrathoracic process"]
+#     model_type = "radgraph-xl"
+#     radgraph = RadGraph(model_type=model_type)
+#     refs = ["no acute cardiopulmonary abnormality",
+#             "et tube terminates 2 cm above the carina retraction by several centimeters is recommended for more optimal placement bibasilar consolidations better assessed on concurrent chest ct",
+#             "there is no significant change since the previous exam the feeding tube and nasogastric tube have been removed",
+#             "unchanged mild pulmonary edema no radiographic evidence pneumonia",
+#             "no evidence of acute pulmonary process moderately large size hiatal hernia",
+#             "no acute intrathoracic process"]
 
-    annotations = radgraph(["no evidence of acute cardiopulmonary process moderate hiatal hernia"])
-    json_output = "tests/annotations_{}.json".format(model_type)
-    if not os.path.exists(json_output):
-        json.dump(annotations, open(json_output, "w"))
-    else:
-        assert annotations == json.load(open(json_output, "r")), annotations
-        print("annotations matches")
+#     annotations = radgraph(["no evidence of acute cardiopulmonary process moderate hiatal hernia"])
+#     json_output = "tests/annotations_{}.json".format(model_type)
+#     if not os.path.exists(json_output):
+#         json.dump(annotations, open(json_output, "w"))
+#     else:
+#         assert annotations == json.load(open(json_output, "r")), annotations
+#         print("annotations matches")
 
-    hyps = ["no acute cardiopulmonary abnormality",
-            "endotracheal tube terminates 2 5 cm above the carina bibasilar opacities likely represent atelectasis or aspiration",
-            "there is no significant change since the previous exam",
-            "unchanged mild pulmonary edema and moderate cardiomegaly",
-            "no evidence of acute cardiopulmonary process moderate hiatal hernia",
-            "no acute cardiopulmonary process"]
-    del radgraph
-    model_type = "radgraph"
-    f1radgraph = F1RadGraph(reward_level="all", model_type=model_type)
-    mean_reward, reward_list, hypothesis_annotation_lists, reference_annotation_lists = f1radgraph(hyps=hyps,
-                                                                                                   refs=refs)
-    print(mean_reward)
-    print(reward_list)
-    print(mean_reward == (0.6238095238095238, 0.5111111111111111, 0.5011204481792717))
-    # (0.6238095238095238, 0.5111111111111111, 0.5011204481792717)
-    # ([1.0, 0.4, 0.5714285714285715, 0.8, 0.5714285714285715, 0.4],
-    #  [1.0, 0.26666666666666666, 0.5714285714285715, 0.4, 0.42857142857142855, 0.4],
-    #  [1.0, 0.23529411764705885, 0.5714285714285715, 0.4, 0.4, 0.4])
+#     hyps = ["no acute cardiopulmonary abnormality",
+#             "endotracheal tube terminates 2 5 cm above the carina bibasilar opacities likely represent atelectasis or aspiration",
+#             "there is no significant change since the previous exam",
+#             "unchanged mild pulmonary edema and moderate cardiomegaly",
+#             "no evidence of acute cardiopulmonary process moderate hiatal hernia",
+#             "no acute cardiopulmonary process"]
+#     del radgraph
+#     model_type = "radgraph"
+#     f1radgraph = F1RadGraph(reward_level="all", model_type=model_type)
+#     mean_reward, reward_list, hypothesis_annotation_lists, reference_annotation_lists = f1radgraph(hyps=hyps,
+#                                                                                                    refs=refs)
+#     print(mean_reward)
+#     print(reward_list)
+#     print(mean_reward == (0.6238095238095238, 0.5111111111111111, 0.5011204481792717))
+#     # (0.6238095238095238, 0.5111111111111111, 0.5011204481792717)
+#     # ([1.0, 0.4, 0.5714285714285715, 0.8, 0.5714285714285715, 0.4],
+#     #  [1.0, 0.26666666666666666, 0.5714285714285715, 0.4, 0.42857142857142855, 0.4],
+#     #  [1.0, 0.23529411764705885, 0.5714285714285715, 0.4, 0.4, 0.4])
