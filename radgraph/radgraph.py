@@ -41,14 +41,11 @@ CACHE_DIR = os.path.join(CACHE_DIR, version)
 class RadGraph(nn.Module):
     def __init__(
         self,
-        device,
         batch_size=1,
         model_type=None,
         **kwargs
     ):
         super().__init__()
-
-        self.device = device
 
         if model_type is None:
             print("model_type not provided, defaulting to radgraph-xl")
@@ -115,12 +112,11 @@ class RadGraph(nn.Module):
         self.model = dygie.DyGIE(vocab=vocab,
                             embedder=embedder,
                             **model_dict
-                            ).to(device=self.device)
+                            )
 
         model_state_path = os.path.join(temp_dir, "weights.th")
         
-        model_state = torch.load(model_state_path, map_location=self.device)
-
+        model_state = torch.load(model_state_path)
 
         self.model.load_state_dict(model_state, strict=True)
         self.model.eval()
@@ -144,7 +140,7 @@ class RadGraph(nn.Module):
         # Forward
         results = []
         for batch in iterator:
-            batch = batch_to_device(batch, self.device)
+            batch = batch_to_device(batch, self.model._embedder.token_embedder_bert._matched_embedder.transformer_model.device)
             output_dict = self.model(**batch)
             results.append(self.model.make_output_human_readable(output_dict).to_json())
 
