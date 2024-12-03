@@ -413,32 +413,32 @@ class PretrainedTransformerTokenizer(Tokenizer):
 
         return tokens_a, offsets_a, offsets_b
 
-    # def add_special_tokens(
-    #     self, tokens1: List[Token], tokens2: Optional[List[Token]] = None
-    # ) -> List[Token]:
-    #     def with_new_type_id(tokens: List[Token], type_id: int) -> List[Token]:
-    #         return [dataclasses.replace(t, type_id=type_id) for t in tokens]
+    def add_special_tokens(
+        self, tokens1: List[Token], tokens2: Optional[List[Token]] = None
+    ) -> List[Token]:
+        def with_new_type_id(tokens: List[Token], type_id: int) -> List[Token]:
+            return [dataclasses.replace(t, type_id=type_id) for t in tokens]
 
-    #     # Make sure we don't change the input parameters
-    #     tokens2 = copy.deepcopy(tokens2)
+        # Make sure we don't change the input parameters
+        tokens2 = copy.deepcopy(tokens2)
 
-    #     # We add special tokens and also set token type ids.
-    #     import dataclasses
+        # We add special tokens and also set token type ids.
+        import dataclasses
 
-    #     if tokens2 is None:
-    #         return (
-    #             self.single_sequence_start_tokens
-    #             + with_new_type_id(tokens1, self.single_sequence_token_type_id)
-    #             + self.single_sequence_end_tokens
-    #         )
-    #     else:
-    #         return (
-    #             self.sequence_pair_start_tokens
-    #             + with_new_type_id(tokens1, self.sequence_pair_first_token_type_id)
-    #             + self.sequence_pair_mid_tokens
-    #             + with_new_type_id(tokens2, self.sequence_pair_second_token_type_id)
-    #             + self.sequence_pair_end_tokens
-    #         )
+        if tokens2 is None:
+            return (
+                self.single_sequence_start_tokens
+                + with_new_type_id(tokens1, self.single_sequence_token_type_id)
+                + self.single_sequence_end_tokens
+            )
+        else:
+            return (
+                self.sequence_pair_start_tokens
+                + with_new_type_id(tokens1, self.sequence_pair_first_token_type_id)
+                + self.sequence_pair_mid_tokens
+                + with_new_type_id(tokens2, self.sequence_pair_second_token_type_id)
+                + self.sequence_pair_end_tokens
+            )
 
     def num_special_tokens_for_sequence(self) -> int:
         return len(self.single_sequence_start_tokens) + len(self.single_sequence_end_tokens)
