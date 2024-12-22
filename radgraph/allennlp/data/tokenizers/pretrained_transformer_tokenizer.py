@@ -413,6 +413,7 @@ class PretrainedTransformerTokenizer(Tokenizer):
 
         return tokens_a, offsets_a, offsets_b
 
+    """
     def add_special_tokens(
         self, tokens1: List[Token], tokens2: Optional[List[Token]] = None
     ) -> List[Token]:
@@ -439,6 +440,7 @@ class PretrainedTransformerTokenizer(Tokenizer):
                 + with_new_type_id(tokens2, self.sequence_pair_second_token_type_id)
                 + self.sequence_pair_end_tokens
             )
+    """
 
     def num_special_tokens_for_sequence(self) -> int:
         return len(self.single_sequence_start_tokens) + len(self.single_sequence_end_tokens)
