@@ -35,7 +35,7 @@ class PretrainedTransformerTokenizer(Tokenizer):
 
     model_name : `str`
         The name of the pretrained wordpiece tokenizer to use.
-    add_special_tokens : `bool`, optional, (default=`True`)
+    add_special_tokens2 : `bool`, optional, (default=`True`)
         If set to `True`, the sequences will be encoded with the special tokens relative
         to their model.
     max_length : `int`, optional (default=`None`)
@@ -61,7 +61,7 @@ class PretrainedTransformerTokenizer(Tokenizer):
     def __init__(
         self,
         model_name: str,
-        add_special_tokens: bool = True,
+        add_special_tokens2: bool = True,
         max_length: Optional[int] = None,
         stride: int = 0,
         truncation_strategy: str = "longest_first",
@@ -77,10 +77,10 @@ class PretrainedTransformerTokenizer(Tokenizer):
         from radgraph.allennlp.common import cached_transformers
 
         self.tokenizer = cached_transformers.get_tokenizer(
-            model_name, add_special_tokens=False, **tokenizer_kwargs
+            model_name, add_special_tokens2=False, **tokenizer_kwargs
         )
 
-        self._add_special_tokens = add_special_tokens
+        self._add_special_tokens2 = add_special_tokens2
         self._max_length = max_length
         self._stride = stride
         self._truncation_strategy = truncation_strategy
@@ -119,18 +119,18 @@ class PretrainedTransformerTokenizer(Tokenizer):
         from radgraph.allennlp.common import cached_transformers
 
         tokenizer_with_special_tokens = cached_transformers.get_tokenizer(
-            model_name, add_special_tokens=True, **tokenizer_kwargs
+            model_name, add_special_tokens2=True, **tokenizer_kwargs
         )
         dummy_output = tokenizer_with_special_tokens.encode_plus(
             token_a,
             token_b,
-            add_special_tokens=True,
+            add_special_tokens2=True,
             return_token_type_ids=True,
             return_attention_mask=False,
         )
-        dummy_a = self.tokenizer.encode(token_a, add_special_tokens=False)[0]
+        dummy_a = self.tokenizer.encode(token_a, add_special_tokens2=False)[0]
         assert dummy_a in dummy_output["input_ids"]
-        dummy_b = self.tokenizer.encode(token_b, add_special_tokens=False)[0]
+        dummy_b = self.tokenizer.encode(token_b, add_special_tokens2=False)[0]
         assert dummy_b in dummy_output["input_ids"]
         assert dummy_a != dummy_b
 
@@ -182,7 +182,7 @@ class PretrainedTransformerTokenizer(Tokenizer):
         # Reverse-engineer the tokenizer for one sequence
         dummy_output = tokenizer_with_special_tokens.encode_plus(
             token_a,
-            add_special_tokens=True,
+            add_special_tokens2=True,
             return_token_type_ids=True,
             return_attention_mask=False,
         )
@@ -233,7 +233,7 @@ class PretrainedTransformerTokenizer(Tokenizer):
         """
         encoded_tokens = self.tokenizer.encode_plus(
             text=text,
-            add_special_tokens=False,
+            add_special_tokens2=False,
             max_length=self._max_length,
             stride=self._stride,
             truncation=self._truncation_strategy if self._max_length is not None else False,
@@ -271,8 +271,8 @@ class PretrainedTransformerTokenizer(Tokenizer):
                 )
             )
 
-        if self._add_special_tokens:
-            tokens = self.add_special_tokens(tokens)
+        if self._add_special_tokens2:
+            tokens = self.add_special_tokens2(tokens)
 
         return tokens
 
@@ -346,7 +346,7 @@ class PretrainedTransformerTokenizer(Tokenizer):
         for token_string in string_tokens:
             wordpieces = self.tokenizer.encode_plus(
                 token_string,
-                add_special_tokens=False,
+                add_special_tokens2=False,
                 return_tensors=None,
                 return_offsets_mapping=False,
                 return_attention_mask=False,
@@ -384,7 +384,7 @@ class PretrainedTransformerTokenizer(Tokenizer):
         This function inserts special tokens.
         """
         tokens, offsets = self._intra_word_tokenize(string_tokens)
-        tokens = self.add_special_tokens(tokens)
+        tokens = self.add_special_tokens2(tokens)
         offsets = self._increment_offsets(offsets, len(self.single_sequence_start_tokens))
         return tokens, offsets
 
@@ -408,13 +408,13 @@ class PretrainedTransformerTokenizer(Tokenizer):
                 + len(self.sequence_pair_mid_tokens)
             ),
         )
-        tokens_a = self.add_special_tokens(tokens_a, tokens_b)
+        tokens_a = self.add_special_tokens2(tokens_a, tokens_b)
         offsets_a = self._increment_offsets(offsets_a, len(self.sequence_pair_start_tokens))
 
         return tokens_a, offsets_a, offsets_b
 
     """
-    def add_special_tokens(
+    def add_special_tokens2(
         self, tokens1: List[Token], tokens2: Optional[List[Token]] = None
     ) -> List[Token]:
         def with_new_type_id(tokens: List[Token], type_id: int) -> List[Token]:
